@@ -1,0 +1,475 @@
+---
+title: "MEJORES LIGAS EUROPEAS DE FÚTBOL"
+subtitle: "Rubén Campos Campos (rucamcam@alumni.uv.es)" #- pongo tú nombre ahí para q aparezca más grande q el de la UV
+author: "Universitat de València"
+date: "Diciembre de 2021 (actualizado el `r format(Sys.time(), '%d-%m-%Y')`)"
+output:
+  html_document:
+    #css: "./assets/my_css_file.css"
+    theme: paper
+    highlight: textmate 
+    toc: true
+    toc_depth: 3 
+    toc_float: 
+      collapsed: true
+      smooth_scroll: true
+    self_contained: true
+    number_sections: false
+    df_print: kable
+    code_download: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r packages-setup, include = FALSE}
+library(tidyverse)
+library(klippy)  #- remotes::install_github("rlesur/klippy")
+library(knitr)
+library(readxl)
+library(reactable)
+library(ggplot2)
+library(stringi)
+library(ggThemeAssist)
+library(plotly)
+library(patchwork)
+library(ggrepel)
+library(sf)
+library(crosstalk)
+library(gganimate)
+library(hrbrthemes)
+library(sf)
+library(RColorBrewer)
+library(rio)
+library(gganimate)
+library(plotly)
+library(ggpubr) #install.packages("ggpubr")
+library(carData) #install.packages("carData")
+```
+
+```{r chunk-setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, message = FALSE, warning = FALSE, 
+                      #results = "hold",
+                      cache = FALSE, cache.path = "/caches/", comment = "#>",
+                      #fig.width = 7, #fig.height= 7,   
+                      #out.width = 7, out.height = 7,
+                      collapse = TRUE,  fig.show = "hold",
+                      fig.asp = 0.628, out.width = "75%", fig.align = "center")
+knitr::opts_chunk$set(dev = "png", dev.args = list(type = "cairo-png"))
+```
+
+
+```{r options-setup, include = FALSE}
+options(scipen = 999) #- para quitar la notación científica
+options("yaml.eval.expr" = TRUE) 
+```
+
+
+```{r klippy, echo = FALSE}
+klippy::klippy(position = c("top", "right")) #- remotes::install_github("rlesur/klippy")
+```
+
+<div style="text-align: justify"><div/>
+
+<hr class="linea-black">
+
+<!-- El párrafo de abajo has de dejarlo casi igual, solo HAS de SUSTITUIR "perezp44" por tu usuario de Github-->
+Trabajo elaborado para la asignatura "Programación y manejo de datos en la era del Big Data" de la Universitat de València durante el curso 2021-2022. El repo del trabajo está [aquí](https://github.com/Rucamcam/trabajo_BigData){target="_blank"}. 
+
+<!-- El párrafo de abajo has de dejarlo exactamente igual, NO HAS DE CAMBIAR NADA-->
+
+La página web de la asignatura y los trabajos de mis compañeros pueden verse [aquí](https://perezp44.github.io/intro-ds-21-22-web/07-trabajos.html){target="_blank"}.
+
+
+<hr class="linea-red">
+
+# 1. Introducción
+<br>
+**Resumen:** Podríamos decir que, aunque en las últimas décadas muchos deportes han ganado popularidad, el fútbol es el deporte más extendido y seguido por aficionados, al menos a nivel europeo. Además, otros continentes como América o Ásia que no han tenido una cultura histórica futbolera como en Europa, están pasando por un proceso de extensión de dicho deporte en sus territorios. Sin embargo, la opinión popular de los aficionados nos dice que las mejores competiciones se juegan en Europa. Por ello, voy a analizar las 5 principales ligas de fútbol europeo.
+<br>
+<br>
+**Competiciones a analizar:** La Liga (liga española), Bundesliga (Liga alemana), Serie A (Liga italiana), Premier League (Liga inglesa) y Ligue 1 (Liga fracesa).
+
+-----------------------
+
+<br>
+
+
+# 2. Datos {.tabset .tabset-pills}
+
+## Comentarios
+
+Como se ha comentado a lo largo del curso y, tras mi experiencia trabajando con datos del INE en el [Trabajo de Equipo](https://github.com/paupiera23/trabajo_BigData_equipo), la principal problemática suele girar entorno al estado en que recibimos los datos. En mi caso, he trabajado con datos obtenidos de la plataforma **Kaggle**, plataforma dedicada al posteo de data frames. Esto ha hecho que los datos con los que he trabajado estubieran muy arreglados. Simplemente he tenido que renombrar y seleccionar.
+
+-----------------------
+
+<br>
+
+## Datos
+
+```{r, eval = TRUE}
+#Importamos al Global Environment el archivo descargado de Kaggle
+df_futbol <- rio::import("./datos/Football teams.csv")
+
+#La unica limpieza que hacemos son los nombres, para poner los que tenemos más familiarizados
+df_futbol <- df_futbol %>% 
+  rename(Equipo = Team, Liga=Tournament, Tiros=Shots, Amarillas=yellow_cards, Rojas=red_cards, Goles=Goals)
+```
+
+-----------------------
+
+## Referencias 
+
+Como he comentado anteriormente, Kaggle es una plataforma que, entre otras funciones, sirve para postear trabajos relacionados con los datos. Lo curioso es que puedes encontrar datos de todo tipo. Desde precios de activos financieros hasta datos deportivos. En mi caso me he basado en datos de los siguientes usuarios :
+
+> varpit94
+<br>
+> TANUJLEOMESSI
+<br>
+> AHMET ÇALIŞ
+<br>
+> RUPESH KR SINGH
+<br>
+> RIBACKI
+<br>
+
+
+
+# 3. Liga más goleadora {.tabset .tabset-pills}
+
+## Análisis
+<br>
+
+En este gráfico, se puede apreciar el máximo y el mínimo de goles anotados por un equipo de cada liga, así como el número promedio de goles que se han marcado en esa liga. Por tanto, podemos ver que el equipo que más goles ha anotado juega en la **Bundesliga**, el equipo que menos tantos ha conseguido juega para la **Premier League**. Además, por término medio, la Bundesliga es la competición con más goles y La Liga es la que menos tiene.
+<br>
+
+```{r, eval = TRUE, echo = FALSE, warning= FALSE}
+p1 <- ggplot (data= df_futbol, aes (x=Liga, y=Goles, fill=Liga))+
+  geom_boxplot() + 
+  labs(title = "Gráfico 1: Goles por Liga",
+        fill = "Competición" ) +
+  theme_dark()+
+  theme(legend.position = "none") +
+  theme(text = element_text(face = "bold"))
+
+ggplotly(p1)
+```
+<br>
+
+-----------------------
+
+## Código
+```{r, eval = FALSE, echo = TRUE, warning= FALSE}
+p1 <- ggplot (data= df_futbol, aes (x=Liga, y=Goles, fill=Liga))+
+  geom_boxplot() + 
+  labs(title = "Gráfico 1: Goles por Liga",
+        fill = "Competición" ) +
+  theme_dark()+
+  theme(legend.position = "none") +
+  theme(text = element_text(face = "bold"))
+
+ggplotly(p1)
+```
+<br>
+-----------------------
+
+# 4. Equipos más y menos goleadores (Top 10) {.tabset .tabset-pills}
+
+## Análisi
+
+<br>
+
+En este caso se pueden observar el TOP 10 de los equipos con más goles y con menos goles. Nos encontramos con que la Bundesliga tiene 4 equipos dentro del TOP 10 de más anotadores, cosa que concuerda con lo explicado en el Punto 3. Por otra parte, otro hecho destacable es que la Serie A no tiene ningún equipo en el TOP 10 menos goleadores.
+
+Cabe destacar que, aunque es un TOP 10, aparecen + - 10 equipos debido a que hay empate en el número de goles.
+
+<br>
+```{r, eval=TRUE, echo = FALSE, warning= FALSE}
+df_mas <- df_futbol %>% 
+  filter(min_rank(desc(Goles))<10)
+
+df_menos <- df_futbol %>% 
+  filter(min_rank(Goles)<10)
+
+pmas <- ggplot(data= df_mas, aes(x=Equipo, y=Goles))+
+  geom_bar(stat="identity",aes(fill=Liga),colour="Black")+
+  labs(title= "Top10 equipos más goleadores")+
+  theme(text = element_text(face = "bold")) + theme_minimal()
+
+pmenos <- ggplot(data= df_menos, aes(x=Equipo, y=Goles))+
+  geom_bar(stat="identity",aes(fill=Liga),colour="Black")+
+  labs(title= "Top10 equipos menos goleadores")+
+  theme(text = element_text(face = "bold"))+ theme_minimal()
+
+pmenos <- pmenos + lims(y=c(0,100))
+
+p2 <- pmas + pmenos 
+
+p2
+```
+<br>
+
+
+## Más goleadores
+<br>
+
+```{r, eval=TRUE, echo = FALSE, warning= FALSE}
+df_mas <- df_futbol %>% 
+  filter(min_rank(desc(Goles))<10)
+
+df_menos <- df_futbol %>% 
+  filter(min_rank(Goles)<10)
+
+pmas <- ggplot(data= df_mas, aes(x=Equipo, y=Goles))+
+  geom_bar(stat="identity",aes(fill=Liga),colour="Black")+
+  labs(title= "Top10 equipos más goleadores")+
+  theme(text = element_text(face = "bold")) + theme_minimal()
+
+
+ggplotly(pmas)
+```
+<br>
+-----------------------
+
+## Menos goleadores
+<br>
+
+```{r, eval=TRUE, echo = FALSE, warning= FALSE}
+df_menos <- df_futbol %>% 
+  filter(min_rank(Goles)<10)
+
+pmenos <- ggplot(data= df_menos, aes(x=Equipo, y=Goles))+
+  geom_bar(stat="identity",aes(fill=Liga),colour="Black")+
+  labs(title= "Top10 equipos menos goleadores")+
+  theme(text = element_text(face = "bold"))+ theme_minimal()
+
+pmenos <- pmenos + lims(y=c(0,100))
+
+ggplotly(pmenos)
+```
+<br>
+-----------------------
+
+## Código
+
+```{r, eval=FALSE, echo = TRUE, warning= FALSE}
+df_mas <- df_futbol %>% 
+  filter(min_rank(desc(Goles))<10)
+
+df_menos <- df_futbol %>% 
+  filter(min_rank(Goles)<10)
+
+pmas <- ggplot(data= df_mas, aes(x=Equipo, y=Goles))+
+  geom_bar(stat="identity",aes(fill=Liga),colour="Black")+
+  labs(title= "Top10 equipos más goleadores")+
+  theme(text = element_text(face = "bold")) + theme_minimal()
+
+
+ggplotly(pmas)
+
+pmenos <- ggplot(data= df_menos, aes(x=Equipo, y=Goles))+
+  geom_bar(stat="identity",aes(fill=Liga),colour="Black")+
+  labs(title= "Top10 equipos menos goleadores")+
+  theme(text = element_text(face = "bold"))+ theme_minimal()
+
+pmenos <- pmenos + lims(y=c(0,100))
+
+ggplotly(pmenos)
+
+p2 <- pmas + pmenos 
+
+p2
+```
+<br>
+-----------------------
+
+# 5. Goles por Liga {.tabset .tabset-pills}
+
+## Análisis
+<br>
+Antes que nada, hay que destacar que he elegido establecer una escala libre en cada competición para poder exagerar las formas y que sea más visual. Por tanto, a la hora de analizar hay que tener en cuenta la escala del eje y.
+Podemos apreciar que, como se ha demostrado anteriormente, la Serie A, aunque concentra muchos de sus equipos en la parte bja del gráfico: rango de goles 40-60, no tiene ningún equipo que anote menos de 39 goles, a diferencia de lo que ocurre por ejemplo en la Premier League, donde hay un equipo con 19 goles.
+
+```{r, eval=TRUE, echo = FALSE, warning= FALSE}
+p3 <- ggplot(data= df_futbol,  aes(x=Liga, y=Goles, fill=Liga)) +
+  geom_violin() +  
+  facet_wrap(Liga~., scales = "free")+
+  geom_jitter() +
+  theme_classic()+
+  theme(legend.position = "none")
+
+ggplotly(p3)
+
+```
+<br>
+-----------------------
+
+## Código
+```{r, eval=FALSE, echo = TRUE, warning= FALSE}
+p3 <- ggplot(data= df_futbol,  aes(x=Liga, y=Goles, fill=Liga)) +
+  geom_violin() +  
+  facet_wrap(Liga~., scales = "free")+
+  geom_jitter() +
+  theme_classic()+
+  theme(legend.position = "none")
+
+ggplotly(p3)
+
+```
+
+-----------------------
+
+# 6. ¿Qué hacen los que más marcan? {.tabset .tabset-pills}
+
+## Análisis
+<br>
+```{r, eval=TRUE ,echo = FALSE, warning= FALSE}
+p4 <- ggballoonplot(data= df_futbol ,x="Possession", y="Tiros", fill="Liga")+
+  theme_classic()+
+  labs(title = "Grafico 4: Relación Posesión-Tiros-Goles")+
+  geom_smooth(color="black")
+
+p4
+```
+
+<br>
+
+En esta ocasión se intenta demostrar si hay una relación entre el % de posesión, la cantidad de tiros por partido y el número de goles anotados. La pregunta que nos podríamos hacer sería: ¿Los que más marcan son los que mas tiros hacen y más mantienen el balón?. Primero que nada se puede observar que la línea de tendencia es creciente, cosa que se traduce en que a medida que el % de posesión y el número de tiros aumentan, tambien lo hace el número de goles. Además, se puede observar que el equipo que más posesión tiene se encuentra en La Liga y hemos visto anteriormente que no es el más goleador. Por tanto, como el más goleador se encuentra en la Bundesliga, para ver quien es el que más goles marcará, influye en mayor medida el número de tiros que se hacen por partido.
+
+<br>
+-----------------------
+
+## código
+```{r, eval=FALSE, echo = TRUE, warning= FALSE}
+p4 <- ggballoonplot(data= df_futbol ,x="Possession", y="Tiros", fill="Liga")+
+  theme_classic()+
+  labs(title = "Grafico 4: Relación Posesión-Tiros-Goles")+
+  geom_smooth(color="black")
+
+p4
+```
+<br>
+-----------------------
+
+# 7. Equipos más amonestados {.tabset .tabset-pills}
+
+## Análisis
+<br>
+En esta ocasión se pretende mostrar los 10 equipos con más tarjetas, tanto rojas como amarillas. El equipo más "duro" fué el Getafe, de La Liga, el cual también está dentro del TOP3 tarjetas rojas. El equipo con más amonestaciones graves (tarjetas rojas) es el Marseille, de la Ligue 1, con un total de 9 rojas.
+
+<br>
+```{r,  eval=TRUE, echo = FALSE, warning= FALSE}
+df_5 <- df_futbol %>% 
+  group_by(Liga) %>% 
+  mutate(Total = Amarillas + Rojas) %>% 
+  select(Equipo ,Amarillas, Rojas, Total ) %>% 
+  top_n(2, Total)
+
+
+p5 <- ggplot(df_5) +
+  aes(x = Equipo, fill = Rojas, weight = Total) +
+  geom_bar() +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  labs(x = "Equipo",
+       y ="Total Tarjetas",
+       title = "Top 10 equipos más amonestados",
+       subtitle = "Tarjetas amarillas y rojas",
+       fill = "Rojas") +
+  ggthemes::theme_base()
+
+ggplotly(p5)
+```
+
+<br>
+-----------------------
+
+## Código
+```{r,  eval=FALSE, echo = TRUE, warning= FALSE}
+df_5 <- df_futbol %>% 
+  group_by(Liga) %>% 
+  mutate(Total = Amarillas + Rojas) %>% 
+  select(Equipo ,Amarillas, Rojas, Total ) %>% 
+  top_n(2, Total)
+
+
+p5 <- ggplot(df_5) +
+  aes(x = Equipo, fill = Rojas, weight = Total) +
+  geom_bar() +
+  scale_fill_distiller(palette = "Reds", direction = 1) +
+  labs(x = "Equipo",
+       y ="Total Tarjetas",
+       title = "Top 10 equipos más amonestados",
+       subtitle = "Tarjetas amarillas y rojas",
+       fill = "Rojas") +
+  ggthemes::theme_base()
+
+ggplotly(p5)
+```
+
+<br>
+-----------------------
+
+# 8. Ranking {.tabset .tabset-pills}
+
+## Análisis
+<br>
+Por último, he querido mostrar la valoración general (Rating) de todos los equipos. Se puede apreciar que el mejor equipo en la temporada 20/21 fué el Manchester City, de la liga inglesa, mientras que el peor fué el Schalke 04, de la liga alemana. Cabe destacar también que los ingleses tienen la mayor parte de sus equipos en el rango de rating 6.6 - 7
+
+```{r,  eval=TRUE, echo = FALSE, warning= FALSE}
+p6 <- ggplot(df_futbol, aes(x=Equipo, y=Rating, fill=Liga))+
+  geom_point()+
+  facet_grid(cols=vars(Liga))+
+  theme(legend.position = "none")+
+  labs(title="Rating de los equipos")
+
+ggplotly(p6)
+```
+
+<br>
+-----------------------
+
+## código
+
+```{r, eval=FALSE, echo = TRUE, warning= FALSE}
+p6 <- ggplot(df_futbol, aes(x=Equipo, y=Rating, fill=Liga))+
+  geom_point()+
+  facet_grid(cols=vars(Liga))+
+  theme(legend.position = "none")+
+  labs(title="Rating de los equipos")
+
+ggplotly(p6)
+```
+<br>
+-----------------------
+
+# 9. Conclusiones
+
+Se han analizado parámetros de las que son consideradas cómo las mejores ligas europeas, pero ¿cual es la mejor liga?. Esto depende del gusto de cada aficionado, pero el consenso general nos dice que esta decisión va variando. Hasta la temporada, aproximadamente, 18/19, La Liga (liga española) era considerada la mejor, con equipos que dieron mucho espectáculo y con mucha calidad de fútbol (ejemplo, el gran % de posesión actual de sus equipos). Hoy por hoy, los ingleses son considerados como los principales creadores de espectáculo futbolístico, entre otras, gracias a su velocidad de juego
+<br>
+<br>
+
+# 10. Bibliografía
+
+[Kaggle](https://www.kaggle.com/)
+<br>
+[rPubs](https://rpubs.com/daniballari/ggplot)
+<br>
+[ggPlot](https://ggplot2.tidyverse.org/)
+<br>
+[Tutoriales](https://perezp44.github.io/intro-ds-21-22-web/04-tutoriales.html)
+<br><br>
+
+<hr class="linea-red">
+<hr class="linea-red">
+
+
+```{r, echo = FALSE}
+sessioninfo::session_info() %>% details::details(summary = 'Información de mi R-sesión:') 
+```
+
+
+<br><br>
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
+<br><br>
+
+<div class="tocify-extend-page" data-unique="tocify-extend-page" style="height: 0;"></div>
